@@ -31,7 +31,7 @@ CREATE TABLE IF NOT EXISTS flights
 
     airline varchar(2) NOT NULL,
     flight_number int NOT NULL,
-    tail_number int NOT NULL,
+    tail_number text NOT NULL,
     
     origin_airport varchar(3) NOT NULL,
     destination_airport varchar(3) NOT NULL,

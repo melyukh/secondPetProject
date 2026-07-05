@@ -15,11 +15,11 @@ DB_USER = os.environ.get("PG_DATA_USER")
 PASSWORD = os.environ.get("PG_DATA_PASSWORD")
 DATA_DIR = os.environ.get("DATA_DIR")
 
-DB_URL = f"jdbc:postgresql://{os.environ.get("POSTGRES_HOST")}:{os.environ.get("POSTGRES_PORT")}/{DB}"
+DB_URL = f"jdbc:postgresql://{os.environ.get("POSTGRES_HOST")}:{os.environ.get("POSTGRES_CONTAINER_PORT")}/{DB}"
 
 spark = SparkSession.builder \
     .appName("postgres_connection") \
-    .config("spark.jars.packages", "org.postgresql:postgresql:42.6.0") \
+    .config("spark.jars", "/opt/airflow/postgresql-42.7.3.jar") \
     .getOrCreate()
 
 flights = spark.read \
@@ -29,8 +29,9 @@ flights = spark.read \
         database=DB,
         dbtable="flights",
         user=DB_USER,
-        password=PASSWORD
+        password=PASSWORD,
     ) \
+    .option("driver", "org.postgresql.Driver") \
     .load()
 
 companies = spark.read \
@@ -42,6 +43,7 @@ companies = spark.read \
         user=DB_USER,
         password=PASSWORD
     ) \
+    .option("driver", "org.postgresql.Driver") \
     .load()
 
 aggregated_by_companies = flights.withColumn("flight_time", 
@@ -54,7 +56,7 @@ result = aggregated_by_companies.join(broadcast(companies), companies["iata"] ==
            .select(companies["name"], aggregated_by_companies["summary_time"]) \
            .orderBy(col("summary_time").desc())
 
-
+result.show(50)
 result_df = result.toPandas()
 
 sns.set_theme(style="whitegrid")

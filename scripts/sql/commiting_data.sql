@@ -6,7 +6,7 @@ ON CONFLICT(name) DO
     NOTHING;
 
 INSERT INTO airports(iata, name, city_id, latitude, longitude)
-SELECT iata, name, c.id, latitude, longitude
+SELECT iata, ta.name, c.id, latitude, longitude
 FROM temp_airports ta
 JOIN cities c
 ON c.name = ta.city
@@ -15,9 +15,10 @@ ON CONFLICT(iata) DO
 
 INSERT INTO airlines(iata, name)
 SELECT iata, name
-FROM temp_airlines
+FROM temp_airlines 
 ON CONFLICT(iata) DO
     NOTHING;
+
 INSERT INTO flights(
     flight_date,
     day_of_week,
@@ -41,7 +42,7 @@ INSERT INTO flights(
     departure_hour,
     arrival_hour
 )
-SELECT  tf.date,
+SELECT  tf.flight_date,
         tf.day_of_week,
         airlines.iata,
         tf.flight_number,
@@ -80,24 +81,24 @@ WHERE c.id IS NULL;
 INSERT INTO flights_quarantine(flight_number, airline, origin_airport, destination_airport, reject_reason)
 SELECT tf.flight_number, tf.airline, tf.origin_airport, tf.destination_airport, 
 CASE
-WHEN origin.iata IS NULL      THEN 'origin airport not found'
-WHEN destination.iata IS NULL THEN 'destination airport not found'
-WHEN airlines.iata IS NULL    THEN 'airline not found'
-END
+    WHEN origin.iata IS NULL      THEN 'origin airport not found'
+    WHEN destination.iata IS NULL THEN 'destination airport not found'
+    WHEN airlines.iata IS NULL    THEN 'airline not found'
+END as reject_reason
 FROM temp_flights tf
 LEFT JOIN temp_airports AS origin
 ON tf.origin_airport = origin.iata
 LEFT JOIN temp_airports AS destination
 ON tf.destination_airport = destination.iata
-LEFT JOIN temp_airlines
-ON temp_airlines.iata = tf.airline
+LEFT JOIN temp_airlines AS airlines
+ON airlines.iata = tf.airline
 WHERE origin.iata IS NULL
 OR destination.iata IS NULL
-OR temp_airlines.iata IS NULL;
+OR airlines.iata IS NULL;
+
+COMMIT;
 
 TRUNCATE TABLE temp_flights;
 TRUNCATE TABLE temp_airlines;
 TRUNCATE TABLE temp_cities;
 TRUNCATE TABLE temp_airports;
-COMMIT;
-проанализируй и скажи, сколько тут ошибок. без их объяснения

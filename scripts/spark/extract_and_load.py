@@ -1,6 +1,6 @@
 from pyspark.sql import SparkSession
 from pyspark.sql.types import StructField, StructType, StringType, IntegerType, DoubleType
-from pyspark.sql.functions import col, when, count, round, to_date, avg, broadcast, lit, coalesce
+from pyspark.sql.functions import col, when, count, round, to_date, avg, broadcast, lit, coalesce, length
 import os
 from dotenv import load_dotenv
 
@@ -68,6 +68,7 @@ flights_df = spark.read.csv(f"{DATA_DIR}/aviadata/flights_pak.csv", header=True,
         "arrival_delay": 0
     }) \
     .dropna(subset=["flight_date", "day_of_week", "airline", "flight_number", "tail_number", "origin_airport", "destination_airport"]) \
+    .withColumn("flight_number", col("flight_number").cast("int")) \
     .withColumn("departure_hour", col("departure_hour").cast("int")) \
     .withColumn("arrival_hour", col("arrival_hour").cast("int")) \
     .withColumn("departure_delay", col("departure_delay").cast("int")) \
@@ -81,12 +82,23 @@ flights_df = spark.read.csv(f"{DATA_DIR}/aviadata/flights_pak.csv", header=True,
     .withColumn("cancelled", col("cancelled").cast("boolean")) \
     .withColumn("diverted", col("diverted").cast("boolean")) \
     .filter(col("departure_hour").between(0, 24)) \
+    .filter(length(col("origin_airport")) == 3) \
+    .filter(length(col("destination_airport")) == 3) \
+    .filter(length(col("airline")) == 2) \
     .withColumn("day_part", when((col("departure_hour").between(0, 5)) | (col("departure_hour") == 24),"Night")
                             .when(col("departure_hour").between(6, 11), "Morning")
                             .when(col("departure_hour").between(12, 17), "Afternoon")
                             .when(col("departure_hour").between(18, 23), "Evening")) \
     .withColumn("is_long_haul", when(col("distance") > 1000, True)
                             .otherwise(False)) \
+    .withColumn("day_of_week",   when(col("day_of_week") == "Sunday", 0)
+                                .when(col("day_of_week") == "Monday", 1)
+                                .when(col("day_of_week") == "Tuesday", 2)
+                                .when(col("day_of_week") == "Wednesday", 3)
+                                .when(col("day_of_week") == "Thursday", 4)
+                                .when(col("day_of_week") == "Friday", 5)
+                                .when(col("day_of_week") == "Saturday", 6)
+                                .otherwise(-1)) \
     .persist()
 
 flights_df.count()
@@ -164,7 +176,7 @@ airports_df.drop_duplicates(subset=["name"]) \
             properties=properties 
         )
 
-airports_df.select("iata", "name", "latitude", "longitude") \
+airports_df.select("iata", "name", "city", "latitude", "longitude") \
     .write \
     .mode("overwrite") \
     .option("truncate", "true") \
@@ -186,17 +198,17 @@ airlines_df\
     properties=properties
 )
 
+flights_df.unpersist()
+
 flights_df \
     .drop("day_part") \
-    .repartition(50) \
+    .repartition(10) \
     .write \
     .mode("overwrite") \
     .option("truncate", "true") \
-    .option("batchsize", "10000") \
+    .option("batchsize", "5000") \
     .jdbc(
         url=jdbc_url,
         table="temp_flights",
         properties=properties
     )
-
-flights_df.unpersist()

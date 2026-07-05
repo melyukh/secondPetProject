@@ -46,7 +46,7 @@ def flights_processing_dag():
     postgres_commiting_data = SQLExecuteQueryOperator(
         task_id="postgres_commiting_data",
         conn_id="postgres_avialines_connection",
-        sql="commitig_data.sql"
+        sql="commiting_data.sql"
     )
 
     get_statistics_of_conflicted_rows = SQLExecuteQueryOperator(
@@ -57,7 +57,7 @@ def flights_processing_dag():
 
     get_airline_statistics = BashOperator(
         task_id="get_airline_statistics",
-        bash_command=f"python3 {DAG_ROOT}/scripts/spark/airlineStatsFromPostgres.py",
+        bash_command=f"python3 {DAG_ROOT}/scripts/spark/airline_stats_from_postgres.py",
         do_xcom_push=True
     )
 
