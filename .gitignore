@@ -1,0 +1,8 @@
+.env*
+__pycache__/
+data/
+logs/
+.vscode/
+.venv/
+*.csv
+*.zip
