@@ -1,21 +1,10 @@
-CREATE TABLE IF NOT EXISTS cities
-(
-    id SERIAL PRIMARY KEY,
-    name text UNIQUE NOT NULL
-);
-
 CREATE TABLE IF NOT EXISTS airports
 (
     iata varchar(3) PRIMARY KEY,
     name text NOT NULL,
-    city_id int NOT NULL,
+    city text NOT NULL,
     latitude numeric(10, 6) NOT NULL,
     longitude numeric(10, 6) NOT NULL,
-
-    CONSTRAINT fk_on_city
-    FOREIGN KEY (city_id) REFERENCES cities(id)
-        ON UPDATE CASCADE
-        ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS airlines

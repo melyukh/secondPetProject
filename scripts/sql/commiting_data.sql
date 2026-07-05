@@ -1,15 +1,6 @@
-BEGIN;
-INSERT INTO cities(name)
-SELECT DISTINCT name 
-FROM temp_cities
-ON CONFLICT(name) DO 
-    NOTHING;
-
-INSERT INTO airports(iata, name, city_id, latitude, longitude)
-SELECT iata, ta.name, c.id, latitude, longitude
+INSERT INTO airports(iata, name, city, latitude, longitude)
+SELECT iata, ta.name, city, latitude, longitude
 FROM temp_airports ta
-JOIN cities c
-ON c.name = ta.city
 ON CONFLICT(iata) DO
     NOTHING;
 
@@ -65,9 +56,9 @@ COALESCE(tf.distance, distance_by_longs_and_lats(origin.latitude, origin.longitu
         tf.arrival_hour
 FROM temp_flights AS tf
 INNER JOIN airports AS origin
-ON origin.iata =  tf.origin_airport
+ON origin.iata = tf.origin_airport
 INNER JOIN airports AS destination
-ON destination.iata =  tf.destination_airport
+ON destination.iata = tf.destination_airport
 INNER JOIN airlines
 ON airlines.iata = tf.airline;
 

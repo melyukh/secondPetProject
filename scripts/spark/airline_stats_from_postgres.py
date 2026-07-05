@@ -20,6 +20,8 @@ DB_URL = f"jdbc:postgresql://{os.environ.get("POSTGRES_HOST")}:{os.environ.get("
 spark = SparkSession.builder \
     .appName("postgres_connection") \
     .config("spark.jars", "/opt/airflow/postgresql-42.7.3.jar") \
+    .config("spark.driver.memory", "1g") \
+    .config("spark.executor.memory", "1g") \
     .getOrCreate()
 
 flights = spark.read \
@@ -45,6 +47,9 @@ companies = spark.read \
     ) \
     .option("driver", "org.postgresql.Driver") \
     .load()
+
+flights.show()
+companies.show()
 
 aggregated_by_companies = flights.withColumn("flight_time", 
                        when(col("departure_hour") <= col("arrival_hour"), col("arrival_hour") - col("departure_hour"))
@@ -85,3 +90,5 @@ for p in barplot.patches:
 plt.tight_layout()
 
 plt.savefig(f'{DATA_DIR}/graphics/airline_statistics.png', dpi=300)
+
+print(f'{DATA_DIR}/graphics/airline_statistics.png')
