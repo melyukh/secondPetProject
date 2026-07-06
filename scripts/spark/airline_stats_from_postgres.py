@@ -28,8 +28,18 @@ flights = spark.read \
     .format("jdbc") \
     .options(
         url=DB_URL,
-        database=DB,
-        dbtable="flights",
+        dbtable="""
+            (
+            WITH cte AS
+            (
+                SELECT airline, CASE WHEN departure_hour <= arrival_hour THEN arrival_hour - departure_hour ELSE arrival_hour - departure_hour + 24 END AS flight_time
+                FROM flights
+            )
+            SELECT airline, SUM(flight_time) as summary_time
+            FROM cte
+            GROUP BY airline 
+            ) AS groupped_companies
+        """,
         user=DB_USER,
         password=PASSWORD,
     ) \
@@ -40,7 +50,6 @@ companies = spark.read \
     .format("jdbc") \
     .options(
         url=DB_URL,  
-        database=DB,
         dbtable="airlines",
         user=DB_USER,
         password=PASSWORD
@@ -51,14 +60,10 @@ companies = spark.read \
 flights.show()
 companies.show()
 
-aggregated_by_companies = flights.withColumn("flight_time", 
-                       when(col("departure_hour") <= col("arrival_hour"), col("arrival_hour") - col("departure_hour"))
-                       .otherwise(col("arrival_hour") + lit(24) - col("departure_hour"))) \
-           .groupBy(col("airline")) \
-           .agg(sum("flight_time").alias("summary_time"))
 
-result = aggregated_by_companies.join(broadcast(companies), companies["iata"] == aggregated_by_companies["airline"]) \
-           .select(companies["name"], aggregated_by_companies["summary_time"]) \
+
+result = flights.join(broadcast(companies), companies["iata"] == flights["airline"]) \
+           .select(companies["name"], flights["summary_time"]) \
            .orderBy(col("summary_time").desc())
 
 result.show(50)

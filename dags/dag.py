@@ -52,7 +52,13 @@ def flights_processing_dag():
     get_statistics_of_conflicted_rows = SQLExecuteQueryOperator(
         task_id="get_statistics_of_conflicted_rows",
         conn_id="postgres_avialines_connection",
-        sql="get_conflict_stat.sql"
+        
+    )
+
+    truncating_temps = SQLExecuteQueryOperator(
+        task_id="truncating_temps",
+        conn_id="postgres_avialines_connection",
+        sql="truncating_temps.sql"
     )
 
     get_airline_statistics = BashOperator(
@@ -61,9 +67,11 @@ def flights_processing_dag():
         do_xcom_push=True
     )
 
+
     send_visualization_onto_email = EmailOperator(
         task_id="send_visualization_onto_email",
         to="{{ var.json.email_recipients }}",
+        conn_id="email_sender",
         subject="Информация о проделанной работе по обработке данных",
         files=["{{ ti.xcom_pull(task_ids='get_airline_statistics') }}"],
         html_content="<p>Визуализация статистики на сегодня</p>"
@@ -72,6 +80,7 @@ def flights_processing_dag():
     send_responce_of_skipping_dag = EmailOperator(
         task_id="send_responce_of_skipping_dag",
         to="{{ var.json.email_recipients }}",
+        conn_id="email_sender",
         subject="Информация о проделанной работе по обработке данных",
         html_content="<p>Выполнение дага было пропущено</p>"
     )
@@ -83,7 +92,7 @@ def flights_processing_dag():
 
     extract_and_load_into_buffer >> \
     postgres_commiting_data >> \
-    [get_airline_statistics, get_statistics_of_conflicted_rows]
+    [get_airline_statistics, truncating_temps, get_statistics_of_conflicted_rows]
 
     get_airline_statistics >> send_visualization_onto_email
 
